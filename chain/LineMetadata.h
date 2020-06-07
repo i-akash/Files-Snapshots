@@ -8,10 +8,13 @@ class LineMetadata
 {
 public:
     std::string line;
+    std::size_t lineHash;
     std::string createdBy;
     std::string deletedBy;
     FileState state;
-    std::size_t lineHash;
+
+    LineMetadata() {}
+
     LineMetadata(LineMetadata *lineMetadata)
     {
         line = lineMetadata->line;

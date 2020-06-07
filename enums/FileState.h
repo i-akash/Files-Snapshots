@@ -3,6 +3,7 @@
 enum FileState
 {
     NEW,
+    NOT_MODIFED,
     UPDATED,
     DELETED
 };

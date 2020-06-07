@@ -11,46 +11,50 @@
 class FileMetadata
 {
 public:
-    std::vector<std::string> lines;
-    std::map<size_t, LineMetadata *> lineMapper;
     size_t fileHash;
-    std::string creator;
-    std::string updater;
+    std::string createdBy;
+    std::string updatedBy;
     FileState state;
+    std::map<size_t, LineMetadata *> lineMapper;
 
-    FileMetadata(std::vector<std::string> plines)
+    FileMetadata() {}
+
+    FileMetadata(std::vector<std::string> plines, std::string author)
     {
-        lines = plines;
-        fileHash = HashSuit::getHash(getContent());
+        fileHash = HashSuit::getHash(getContent(plines));
+        addLinesToMap(author, plines);
     }
 
-    void create(std::string pCreator)
+    void create(std::string pCreatedBy)
     {
         state = FileState::NEW;
-        creator = pCreator;
-        addLinesToMap(pCreator);
+        createdBy = pCreatedBy;
     }
 
-    void update(std::map<size_t, LineMetadata *> pLineMapper, std::string pUpdater)
+    void dontModify()
+    {
+        state = FileState::NOT_MODIFED;
+    }
+
+    void update(std::map<size_t, LineMetadata *> pLineMapper, std::string pUpdatedBy)
     {
         state = FileState::UPDATED;
-        updater = pUpdater;
-        addLinesToMap(pUpdater);
-        deletedLinesFromMap(pLineMapper, pUpdater);
+        updatedBy = pUpdatedBy;
+        deletedLinesFromMap(pLineMapper, pUpdatedBy);
     }
 
-    void _delete(std::string pUpdater)
+    void _delete(std::string pUpdatedBy)
     {
         state = FileState::DELETED;
-        updater = pUpdater;
+        updatedBy = pUpdatedBy;
     }
 
     ~FileMetadata() {}
 
 private:
-    void addLinesToMap(std::string author)
+    void addLinesToMap(std::string author, std::vector<std::string> pLines)
     {
-        for (auto line : lines)
+        for (auto line : pLines)
         {
             size_t lineHash = HashSuit::getHash(line);
             if (lineMapper[lineHash] == nullptr)
@@ -76,10 +80,10 @@ private:
         }
     }
 
-    std::string getContent()
+    std::string getContent(std::vector<std::string> pLines)
     {
         std::string content = "";
-        for (auto line : lines)
+        for (auto line : pLines)
         {
             content += line;
         }

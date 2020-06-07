@@ -9,14 +9,11 @@ class Chain
 {
 private:
     LinkedList<Block *> *chain;
-    // std::string dataFolder;
 
 public:
     Chain()
     {
         chain = new LinkedList<Block *>();
-        addGenesisBlock();
-        //this->dataFolder = dataFolder;
     }
 
     void addGenesisBlock()
@@ -28,9 +25,7 @@ public:
 
     void pushBack(Block *block)
     {
-
         chain->pushBack(block);
-        // saveBlock(block);
     }
 
     Block *getLastBlock()
@@ -53,14 +48,6 @@ public:
     {
         return chain->mHead;
     }
-
-    // void saveBlock(Block *block)
-    // {
-    //     std::string dir = this->dataFolder + "\\" + block->branchName + "\\" + to_string(block->blockHash);
-    //     IO::createDir(dir);
-
-    //     IO::write(dir + "\\blockInfo.txt", block->branchName + "\n" + to_string(block->prevHash) + "\n" + to_string(block->blockHash) + "\n");
-    // }
 
     ~Chain()
     {
