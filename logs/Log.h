@@ -17,6 +17,7 @@ public:
         auto contentCStr = content.c_str();
         writer.write(contentCStr, content.size());
     }
+
     static void createDir(std::string path)
     {
         std::filesystem::create_directories(path);

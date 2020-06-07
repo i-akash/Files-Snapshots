@@ -7,3 +7,5 @@
 ## Commands
 
 - `.\snap.exe commit`
+- `.\snap.exe init your_name`
+-

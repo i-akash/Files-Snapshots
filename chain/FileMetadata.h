@@ -5,6 +5,7 @@
 #include "../enums/FileState.h"
 #include "../crypto/HashSuit.h"
 #include "./LineMetadata.h"
+#include "../helper/MapHelpers.h"
 #include <map>
 #include <vector>
 
@@ -15,31 +16,36 @@ public:
     std::string createdBy;
     std::string updatedBy;
     FileState state;
-    std::map<size_t, LineMetadata *> lineMapper;
+    std::map<size_t, LineMetadata> lineMapper;
 
     FileMetadata() {}
 
-    FileMetadata(std::vector<std::string> plines, std::string author)
+    FileMetadata(std::vector<std::string> plines)
     {
         fileHash = HashSuit::getHash(getContent(plines));
-        addLinesToMap(author, plines);
     }
 
-    void create(std::string pCreatedBy)
+    void create(std::vector<std::string> plines, std::string pCreatedBy)
     {
         state = FileState::NEW;
         createdBy = pCreatedBy;
+        addLinesToMap(lineMapper, plines, pCreatedBy);
     }
 
-    void dontModify()
+    void dontModify(FileMetadata fileMetadata)
     {
+        fileHash = fileMetadata.fileHash;
+        createdBy = fileMetadata.createdBy;
+        updatedBy = fileMetadata.updatedBy;
         state = FileState::NOT_MODIFED;
+        lineMapper = fileMetadata.lineMapper;
     }
 
-    void update(std::map<size_t, LineMetadata *> pLineMapper, std::string pUpdatedBy)
+    void update(std::vector<std::string> plines, std::map<size_t, LineMetadata> pLineMapper, std::string pUpdatedBy)
     {
         state = FileState::UPDATED;
         updatedBy = pUpdatedBy;
+        addLinesToMap(pLineMapper, plines, pUpdatedBy);
         deletedLinesFromMap(pLineMapper, pUpdatedBy);
     }
 
@@ -52,29 +58,45 @@ public:
     ~FileMetadata() {}
 
 private:
-    void addLinesToMap(std::string author, std::vector<std::string> pLines)
+    void addLinesToMap(std::map<size_t, LineMetadata> pLineMapper, std::vector<std::string> pLines, std::string author)
     {
         for (auto line : pLines)
         {
             size_t lineHash = HashSuit::getHash(line);
-            if (lineMapper[lineHash] == nullptr)
+            if (isExist(lineMapper, lineHash) == false)
             {
-                auto lineMetadata = new LineMetadata(line, lineHash);
-                lineMetadata->create(author);
-                lineMapper[lineHash] = lineMetadata;
+                if (isExist(pLineMapper, lineHash))
+                {
+                    auto lineMetadata = pLineMapper[lineHash];
+                    if (lineMetadata.state == FileState::DELETED)
+                    {
+                        lineMetadata.create(author);
+                    }
+                    else
+                    {
+                        lineMetadata.state = FileState::NEW;
+                    }
+                    lineMapper[lineHash] = lineMetadata;
+                }
+                else
+                {
+                    LineMetadata lineMetadata(line, lineHash);
+                    lineMetadata.create(author);
+                    lineMapper[lineHash] = lineMetadata;
+                }
             }
         }
     }
 
-    void deletedLinesFromMap(std::map<size_t, LineMetadata *> pLineMapper, std::string author)
+    void deletedLinesFromMap(std::map<size_t, LineMetadata> pLineMapper, std::string author)
     {
         for (auto linePair : pLineMapper)
         {
             size_t lineHash = linePair.first;
-            if (lineMapper[lineHash] == nullptr)
+            if (isExist(lineMapper, lineHash) == false)
             {
                 auto lineMetadata = linePair.second;
-                lineMetadata->_delete(author);
+                lineMetadata._delete(author);
                 lineMapper[lineHash] = lineMetadata;
             }
         }

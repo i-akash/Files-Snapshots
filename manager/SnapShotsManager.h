@@ -9,6 +9,8 @@
 #include <map>
 #include "../file_expolere/FileExplorer.h"
 #include "../chain/LineMetadata.h"
+#include "../helper/MapHelpers.h"
+#include "../configurations/SnapConfig.h"
 
 using namespace std;
 
@@ -17,20 +19,16 @@ class SnapShotsManager
 
 public:
     Chain *chain;
-    string rootPath;
-    SnapShotsManager(string rootPath)
+    SnapConfigInfo *snapConfig;
+    SnapShotsManager(SnapConfigInfo *snapConfig)
     {
         chain = new Chain();
-        this->rootPath = rootPath;
-    }
-
-    void syncChain()
-    {
+        this->snapConfig = snapConfig;
     }
 
     Block *CreateBlock(vector<filesystem::path> filepaths)
     {
-        std::map<std::string, FileMetadata *> fileMetadataMapper;
+        std::map<std::string, FileMetadata> fileMetadataMapper;
 
         auto lastValidBlock = chain->getLastBlock();
         if (lastValidBlock == nullptr)
@@ -45,19 +43,19 @@ public:
         {
             string filepathString = filepath.string();
             auto lines = IO::read(filepathString);
-            auto fileMetadata = new FileMetadata(lines, "akash");
+            FileMetadata fileMetadata(lines);
             auto prevFileMetadata = fileMapper[filepathString];
-            if (prevFileMetadata == nullptr)
+            if (isExist(fileMapper, filepathString) == false)
             {
-                fileMetadata->create("akash");
+                fileMetadata.create(lines, snapConfig->userName);
             }
-            else if (prevFileMetadata->fileHash == fileMetadata->fileHash)
+            else if (prevFileMetadata.fileHash == fileMetadata.fileHash)
             {
-                fileMetadata->dontModify();
+                fileMetadata.dontModify(prevFileMetadata);
             }
             else
             {
-                fileMetadata->update(prevFileMetadata->lineMapper, "bkash");
+                fileMetadata.update(lines, prevFileMetadata.lineMapper, snapConfig->userName);
             }
             fileMetadataMapper[filepathString] = fileMetadata;
         }
@@ -66,11 +64,11 @@ public:
         {
             auto path = prevFileMetadata.first;
 
-            if (fileMetadataMapper[path] == nullptr)
+            if (isExist(fileMetadataMapper, path) == false)
             {
                 vector<string> emptyLines;
-                fileMetadataMapper[path] = new FileMetadata(emptyLines, "akash");
-                fileMetadataMapper[path]->_delete("akash");
+                fileMetadataMapper[path] = prevFileMetadata.second;
+                fileMetadataMapper[path]._delete(snapConfig->userName);
             }
         }
 
@@ -116,7 +114,7 @@ public:
         }
         auto block = currentNode->data;
         auto fileMetadata = block->fileMetadataMapper[path];
-        if (fileMetadata == nullptr)
+        if (isExist(block->fileMetadataMapper, path) == false)
         {
             cout << "No File with this path";
         }
@@ -143,17 +141,17 @@ public:
         cout << "___END_OF_BLOCK___\n\n";
     }
 
-    void printFileMetadata(string path, FileMetadata *fileMetadata)
+    void printFileMetadata(string path, FileMetadata fileMetadata)
     {
-        if (fileMetadata->state == FileState::NEW)
+        if (fileMetadata.state == FileState::NEW)
         {
             cout << "File (New) : " << path << "\n";
         }
-        else if (fileMetadata->state == FileState::UPDATED)
+        else if (fileMetadata.state == FileState::UPDATED)
         {
             cout << "File (Updated) : " << path << "\n";
         }
-        else if (fileMetadata->state == FileState::NOT_MODIFED)
+        else if (fileMetadata.state == FileState::NOT_MODIFED)
         {
             cout << "File (Not Modified) : " << path << "\n";
         }
@@ -162,20 +160,20 @@ public:
             cout << "File (Deleted) : " << path << "\n";
         }
 
-        auto linesMapper = fileMetadata->lineMapper;
+        auto linesMapper = fileMetadata.lineMapper;
 
         for (auto linesPair : linesMapper)
         {
             auto metadata = linesPair.second;
-            if (metadata->state == FileState::NEW)
+            if (metadata.state == FileState::NEW)
             {
-                cout << "created by - " << metadata->createdBy << " : ";
+                cout << "created by - " << metadata.createdBy << " : ";
             }
             else
             {
-                cout << "deleted by - " << metadata->deletedBy << " : ";
+                cout << "deleted by - " << metadata.deletedBy << " : ";
             }
-            cout << metadata->line << "\n";
+            cout << metadata.line << "\n";
         }
     }
 
@@ -194,7 +192,7 @@ public:
 
     void saveBlock(Block *block, int index)
     {
-        string blockDir = rootPath + "\\storage\\" + to_string(index);
+        string blockDir = snapConfig->snapStoragePath + "\\" + to_string(index);
         IO::createDir(blockDir);
 
         string content = "";
@@ -204,7 +202,7 @@ public:
         for (auto fileMetadataPair : block->fileMetadataMapper)
         {
             content += fileMetadataPair.first + "\n";
-            content += to_string(fileMetadataPair.second->fileHash) + "\n";
+            content += to_string(fileMetadataPair.second.fileHash) + "\n";
 
             saveFileMetadata(fileMetadataPair.second, blockDir);
         }
@@ -212,36 +210,36 @@ public:
         IO::write(blockDir + "\\block.txt", content);
     }
 
-    void saveFileMetadata(FileMetadata *fileMetadata, string blockDir)
+    void saveFileMetadata(FileMetadata fileMetadata, string blockDir)
     {
         string content = "";
 
-        content += to_string(fileMetadata->fileHash) + "\n";
-        content += to_string(fileMetadata->state) + "\n";
-        content += fileMetadata->createdBy + "\n";
-        content += fileMetadata->updatedBy + "\n";
+        content += to_string(fileMetadata.fileHash) + "\n";
+        content += to_string(fileMetadata.state) + "\n";
+        content += fileMetadata.createdBy + "\n";
+        content += fileMetadata.updatedBy + "\n";
 
-        for (auto linePair : fileMetadata->lineMapper)
+        for (auto linePair : fileMetadata.lineMapper)
         {
             auto lineInfo = linePair.second;
-            content += lineInfo->line + "\n";
-            content += to_string(lineInfo->lineHash) + "\n";
-            content += to_string(lineInfo->state) + "\n";
-            content += lineInfo->createdBy + "\n";
-            content += lineInfo->deletedBy + "\n";
+            content += lineInfo.line + "\n";
+            content += to_string(lineInfo.lineHash) + "\n";
+            content += to_string(lineInfo.state) + "\n";
+            content += lineInfo.createdBy + "\n";
+            content += lineInfo.deletedBy + "\n";
         }
 
-        IO::write(blockDir + "\\" + to_string(fileMetadata->fileHash) + ".txt", content);
+        IO::write(blockDir + "\\" + to_string(fileMetadata.fileHash) + ".txt", content);
     }
 
     void restoreChain()
     {
-        string storageDir = rootPath + "\\storage\\";
+        string storageDir = snapConfig->snapStoragePath;
         auto blockDirs = FileExplorer::getAllDirsOfOneLevel(storageDir);
 
         for (auto blockDir : blockDirs)
         {
-            auto block = restoreBlock(blockDir.string());
+            auto block = restoreBlock(blockDir);
             chain->pushBack(block);
         }
     }
@@ -253,14 +251,14 @@ public:
         size_t prevHash = stoull(lines[line++]);
         size_t blockHash = stoull(lines[line++]);
 
-        map<string, FileMetadata *> fileMapper;
+        map<string, FileMetadata> fileMapper;
 
         while (line < lines.size())
         {
             string filePath = lines[line++];
             string fileHash = lines[line++];
             string fileMetadataPath = blockDir + "\\" + fileHash + ".txt";
-            FileMetadata *fileMetadata = restoreFileMetadata(fileMetadataPath);
+            FileMetadata fileMetadata = restoreFileMetadata(fileMetadataPath);
             fileMapper[filePath] = fileMetadata;
         }
 
@@ -268,32 +266,32 @@ public:
         return restoredBlock;
     }
 
-    FileMetadata *restoreFileMetadata(string fileMetadataPath)
+    FileMetadata restoreFileMetadata(string fileMetadataPath)
     {
         int line = 0;
         auto lines = IO::read(fileMetadataPath);
 
-        FileMetadata *restoredFileMetadata = new FileMetadata();
-        restoredFileMetadata->fileHash = stoull(lines[line++]);
-        restoredFileMetadata->state = FileState(stoi(lines[line++]));
-        restoredFileMetadata->createdBy = lines[line++];
-        restoredFileMetadata->updatedBy = lines[line++];
+        FileMetadata restoredFileMetadata;
+        restoredFileMetadata.fileHash = stoull(lines[line++]);
+        restoredFileMetadata.state = FileState(stoi(lines[line++]));
+        restoredFileMetadata.createdBy = lines[line++];
+        restoredFileMetadata.updatedBy = lines[line++];
 
-        map<size_t, LineMetadata *> linesMapper;
+        map<size_t, LineMetadata> linesMapper;
 
         while (line < lines.size())
         {
-            auto lineInfo = new LineMetadata();
-            lineInfo->line = lines[line++];
-            lineInfo->lineHash = stoull(lines[line++]);
-            lineInfo->state = FileState(stoi(lines[line++]));
-            lineInfo->createdBy = lines[line++];
-            lineInfo->deletedBy = lines[line++];
+            LineMetadata lineInfo;
+            lineInfo.line = lines[line++];
+            lineInfo.lineHash = stoull(lines[line++]);
+            lineInfo.state = FileState(stoi(lines[line++]));
+            lineInfo.createdBy = lines[line++];
+            lineInfo.deletedBy = lines[line++];
 
-            linesMapper[lineInfo->lineHash] = lineInfo;
+            linesMapper[lineInfo.lineHash] = lineInfo;
         }
 
-        restoredFileMetadata->lineMapper = linesMapper;
+        restoredFileMetadata.lineMapper = linesMapper;
         return restoredFileMetadata;
     }
 };

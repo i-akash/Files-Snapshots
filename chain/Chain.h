@@ -18,7 +18,7 @@ public:
 
     void addGenesisBlock()
     {
-        std::map<std::string, FileMetadata *> fileMetadataMapper;
+        std::map<std::string, FileMetadata> fileMetadataMapper;
         auto genesisBlock = new Block(fileMetadataMapper, 0);
         pushBack(genesisBlock);
     }

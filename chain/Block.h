@@ -8,11 +8,11 @@
 class Block
 {
 public:
-    std::map<std::string, FileMetadata *> fileMetadataMapper;
+    std::map<std::string, FileMetadata> fileMetadataMapper;
     std::size_t prevHash;
     std::size_t blockHash;
 
-    Block(std::map<std::string, FileMetadata *> fileMetadataMapper, std::size_t prevHash)
+    Block(std::map<std::string, FileMetadata> fileMetadataMapper, std::size_t prevHash)
     {
         this->fileMetadataMapper = fileMetadataMapper;
         this->prevHash = prevHash;
