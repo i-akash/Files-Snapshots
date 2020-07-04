@@ -30,7 +30,7 @@ public:
     {
         std::map<std::string, FileMetadata> fileMetadataMapper;
 
-        auto lastValidBlock = chain->getLastBlock();
+        auto lastValidBlock = chain->getLastValidBlock();
         if (lastValidBlock == nullptr)
         {
             chain->addGenesisBlock();

@@ -4,6 +4,7 @@
 #include <map>
 #include "./FileMetadata.h"
 #include "../crypto/HashSuit.h"
+#include "../helper/MarkleRoot.h"
 
 class Block
 {
@@ -16,11 +17,24 @@ public:
     {
         this->fileMetadataMapper = fileMetadataMapper;
         this->prevHash = prevHash;
-        this->blockHash = HashSuit::getHash(std::to_string(rand()));
+        this->blockHash = this->computeBlockHash();
     }
 
     ~Block()
     {
+    }
+
+private:
+    size_t computeBlockHash()
+    {
+        std::vector<size_t> filesHash;
+        for (auto file : fileMetadataMapper)
+        {
+            filesHash.push_back(file.second.fileHash);
+        }
+        auto markleRoot = getMarkleRoot<size_t>(filesHash);
+        auto blockHashContent = markleRoot + std::to_string(prevHash);
+        return HashSuit::getHash(blockHashContent);
     }
 };
 #endif // BLOCK_DEF

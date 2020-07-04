@@ -44,6 +44,27 @@ public:
         return currentNode->data;
     }
 
+    Block *getLastValidBlock()
+    {
+
+        auto currentNode = chain->mHead;
+        if (currentNode == nullptr)
+        {
+            return nullptr;
+        }
+
+        while (currentNode->next)
+        {
+            auto nextNode = currentNode->next;
+            if (currentNode->data->blockHash != nextNode->data->prevHash)
+            {
+                return currentNode->data;
+            }
+            currentNode = nextNode;
+        }
+        return currentNode->data;
+    }
+
     Node<Block *> *getHead()
     {
         return chain->mHead;
