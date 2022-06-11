@@ -2,7 +2,7 @@
 
 Descriptions : Take snapshots of files of a directory
 
-* Features: *
+*Features:*
   - using Blockchain to enforce immutably at metadata level
   - maintaining editing history
 
